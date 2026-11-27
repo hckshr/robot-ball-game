@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23e36b1e'/%3E%3Ccircle cx='16' cy='13' r='5' fill='%23ffd15a'/%3E%3C/svg%3E">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -64,8 +65,16 @@ body.bad #sBad.sel{background:#0e0e12;color:#ff4a4a;box-shadow:0 0 0 4px #ff3b3b
 body.bad .sw{border-color:#4a4d58;box-shadow:0 0 0 3px rgba(255,255,255,.15)}
 body.bad .sw.sel{box-shadow:0 0 0 5px #ff3b3b}
 body.bad #bBeep{background:#ff3b3b;color:#fff}
+#botRollo.sel{background:#eaf6ff;color:#1a6ad0;box-shadow:0 0 0 4px #38b6ff,0 4px 0 #1a5aa6}
+#botChop.sel{background:#ffe0c2;color:#8a3b08;box-shadow:0 0 0 4px #e36b1e,0 4px 0 #a3440c}
+body.bad #botRollo.sel{background:#2a3142;color:#9fd0ff;box-shadow:0 0 0 4px #38b6ff,0 4px 0 #111}
+body.bad #botChop.sel{background:#ff8a1c;color:#1b1208;box-shadow:0 0 0 4px #ffb020,0 4px 0 #000}
+body.chop #bBeep,body.chop #mBeep{background:#ffb020;color:#3b2a6b}
+body.bad.chop #bBeep,body.bad.chop #mBeep{background:#ff6a2a;color:#fff}
+#mColorLbl{text-align:center;max-width:380px}
 @media (orientation:portrait){.panel{flex-direction:column;gap:10px;padding:16px}#swatches{gap:7px}.sw{width:46px;height:46px}}
-@media (max-height:360px){.tip{display:none}#preview{width:110px;height:110px}}
+@media (max-height:700px) and (orientation:portrait){#preview{width:124px;height:124px}.panel{gap:6px;padding:12px}.sideb{height:42px}}
+@media (max-height:360px){.tip{display:none}#preview{width:110px;height:110px}.sideb{height:38px;font-size:15px}}
 </style>
 </head>
 <body>
@@ -85,8 +94,9 @@ body.bad #bBeep{background:#ff3b3b;color:#fff}
       <div id="mStats"></div>
     </div>
     <div class="col">
+      <div class="sides" id="bots"><button class="ui sideb sel" id="botRollo" aria-label="Play as Rollo">Rollo</button><button class="ui sideb" id="botChop" aria-label="Play as Chopper">Chopper</button></div>
       <div class="sides"><button class="ui sideb" id="sGood">&#9733; Good side</button><button class="ui sideb" id="sBad">&#9889; Bad side</button></div>
-      <div class="lbl">Pick Rollo's colors!</div>
+      <div class="lbl" id="mColorLbl">Pick Rollo's colors!</div>
       <div id="swatches"></div>
       <button class="ui big" id="mPlay">&#9654; PLAY</button>
       <button class="ui mid" id="mRestart">&#8634; Start over</button>
@@ -217,6 +227,36 @@ const sfx = {
   over() { [523, 440, 392, 330].forEach((f, i) => tone('triangle', f, f * 0.98, 0.2, 0.17, i * 0.2)); tone('sine', 330, 880, 0.25, 0.15, 0.85); },
   click() { tone('sine', 660, 880, 0.06, 0.15); },
   go() { tone('square', 523, 523, 0.1, 0.08); tone('square', 784, 784, 0.18, 0.09, 0.12); },
+  chopTalk(n) {
+    let t = 0;
+    n = n || (2 + (Math.random() * 4 | 0));
+    for (let i = 0; i < n; i++) {
+      const f0 = rnd(95, 270);
+      const f1 = Math.max(48, f0 * rnd(0.38, 0.78));
+      const d = rnd(0.06, 0.15);
+      tone(i % 2 ? 'square' : 'sawtooth', f0, f1, d, 0.11, t);
+      if (Math.random() < 0.65) noise(Math.min(0.12, d), 0.075, Math.min(880, f0 * 3), Math.max(70, f1), t);
+      t += d * rnd(0.8, 1.2) + rnd(0.02, 0.07);
+    }
+  },
+  chopJump(second) {
+    if (second) {
+      tone('square', 210, 90, 0.12, 0.11);
+      tone('sawtooth', 340, 100, 0.16, 0.07, 0.03);
+      noise(0.22, 0.22, 220, 1500);
+      tone('triangle', 170, 55, 0.18, 0.06, 0.05);
+    } else {
+      tone('sawtooth', 250, 90, 0.13, 0.12);
+      tone('square', 150, 68, 0.1, 0.07, 0.04);
+      noise(0.1, 0.1, 170, 520, 0.02);
+    }
+  },
+  zap() {
+    noise(0.16, 0.3, 2400, 320);
+    noise(0.08, 0.16, 3600, 700, 0.03);
+    tone('square', 760, 150, 0.12, 0.09);
+    tone('sawtooth', 190, 55, 0.18, 0.07, 0.04);
+  },
   phrase(bad, text) {
     let t = 0;
     if (bad && /ha/i.test(text || '')) { // villain laugh
@@ -237,6 +277,11 @@ const PHRASES = ['Beep boop!', 'Bloop bloop!', 'Wheee!', 'Zip zap zoop!', 'Boop-
 const EMOTES = ['heart', 'star', 'note', 'smile', 'bolt'];
 const BAD_PHRASES = ['Beep-boop, I\u2019m the boss!', 'Muahaha-bzzt!', 'Bow to the ball!', 'Grr-beep!', 'Bad bot coming through!', 'Bzzt! Out of my way!', 'Mwa-ha-boop!', 'I am the Roll-Master!', 'Hmph. Boop.', 'Beep. Beep. BOSS.', 'Zap zap, you lose!', 'Evil rolling!', 'Bloop of DOOM!', 'Ha-ha-ha-bzzt!'];
 const BAD_EMOTES = ['angry', 'zap', 'star', 'angry'];
+const CHOP_PHRASES = ['Hmph.', 'Blart!', 'Bwonk.', 'Grr-womp.', 'Mrrrp.', 'Bzzt. Hmph.', 'Wark!', 'Blorp.', 'Grumble!', 'Mrrr-beep.', 'Honk.', 'Bworrp!', 'Bwee-onk.', 'Pfft.'];
+const CHOP_BAD = ['Outta my way!', 'Bzzt. Mine.', 'Grr-blart!', 'Bad mood.', 'Zap. Move!', 'Bwonk!', 'Mrrr. Boss.', 'Grumble. BOSS.', 'Pfft!', 'Honk honk!'];
+const CHOP_EMOTES = ['angry', 'zap', 'bolt', 'angry'];
+let bot = store.get('bot', 'rollo') === 'chopper' ? 'chopper' : 'rollo';
+let mutterT = 6;
 
 // ---------------- game state ----------------
 let state = 'title';
@@ -252,7 +297,8 @@ let previewBubble = 0;
 
 function newPlayer() {
   return { x: 0, y: 0, vx: 0, vy: 0, ground: null, jumps: 0, coyote: 0, buffer: 0, angle: 0, sq: 0, sqv: 0, inv: 0, dash: 0, pound: false,
-    drop: 0, dropY: 0, rescue: 0, lean: 0, ant: 0, antv: 0, blink: 3, dizzy: 0, wallCD: 0, dustT: 0, lastSafe: null, safeX: 0, happy: 0 };
+    drop: 0, dropY: 0, rescue: 0, lean: 0, ant: 0, antv: 0, blink: 3, dizzy: 0, wallCD: 0, dustT: 0, lastSafe: null, safeX: 0, happy: 0,
+    dome: 0, zap: 0, zapCD: 0 };
 }
 
 // ---------------- level generation ----------------
@@ -371,9 +417,9 @@ function showMenu(mode) {
   $('pad').style.display = 'none';
   $('mRestart').style.display = mode === 'pause' ? '' : 'none';
   if (mode === 'title') {
-    $('mTitle').textContent = side === 'bad' ? 'BAD ROLLO!' : 'ROLLO ROLLS!';
+    $('mTitle').textContent = titleFor();
     $('mPlay').innerHTML = '&#9654; PLAY';
-    $('mStats').innerHTML = best ? 'Best score: ' + best : (side === 'bad' ? 'Muahaha! I\u2019m Bad Rollo!' : 'Hi! I\u2019m Rollo!');
+    $('mStats').innerHTML = greetLine();
   } else if (mode === 'pause') {
     $('mTitle').textContent = 'Paused';
     $('mPlay').innerHTML = '&#9654; KEEP ROLLING';
@@ -381,10 +427,11 @@ function showMenu(mode) {
   } else {
     const sc = score(), nb = sc > best;
     if (nb) { best = sc; store.set('best', best); }
-    $('mTitle').textContent = nb ? 'NEW BEST!' : (side === 'bad' ? 'Muahaha, again!' : 'Great rolling!');
+    $('mTitle').textContent = againLine(nb);
     $('mPlay').innerHTML = '&#9654; PLAY AGAIN';
     $('mStats').innerHTML = 'Score: <b>' + sc + '</b><br>' + dist() + ' m &middot; &#9881; ' + bolts + '<br>Best: ' + best;
   }
+  syncBotUi();
   menuMode = mode;
   resize();
 }
@@ -396,13 +443,29 @@ function resumeGame() { state = 'play'; hideMenu(); }
 function gameOver() { state = 'over'; overT = 0; sfx.over(); showMenu('over'); }
 
 function toast(text, color) { toasts.push({ text, color: color || '#ffe066', t: 1.4 }); if (toasts.length > 3) toasts.shift(); }
+function titleFor() {
+  if (bot === 'chopper') return side === 'bad' ? 'BAD CHOP!' : 'CHOPPER!';
+  return side === 'bad' ? 'BAD ROLLO!' : 'ROLLO ROLLS!';
+}
+function greetLine() {
+  if (best) return 'Best score: ' + best;
+  if (bot === 'chopper') return side === 'bad' ? 'Grr-bzzt! Bad mood.' : 'Hmph. I\u2019m Chopper.';
+  return side === 'bad' ? 'Muahaha! I\u2019m Bad Rollo!' : 'Hi! I\u2019m Rollo!';
+}
+function againLine(nb) {
+  if (nb) return 'NEW BEST!';
+  if (bot === 'chopper') return side === 'bad' ? 'Grr. Again!' : 'Hmph. Again!';
+  return side === 'bad' ? 'Muahaha, again!' : 'Great rolling!';
+}
 function say() {
-  const ph = side === 'bad' ? BAD_PHRASES : PHRASES, em = side === 'bad' ? BAD_EMOTES : EMOTES;
+  const chop = bot === 'chopper';
+  const ph = chop ? (side === 'bad' ? CHOP_BAD : CHOP_PHRASES) : (side === 'bad' ? BAD_PHRASES : PHRASES);
+  const em = chop ? CHOP_EMOTES : (side === 'bad' ? BAD_EMOTES : EMOTES);
   bubble.text = ph[(Math.random() * ph.length) | 0];
   bubble.emo = em[(Math.random() * em.length) | 0];
   bubble.t = 1.9; previewBubble = 1.9;
-  if (P) P.happy = 1.9;
-  sfx.phrase(side === 'bad', bubble.text);
+  if (P) P.happy = 1.6;
+  if (chop) sfx.chopTalk(); else sfx.phrase(side === 'bad', bubble.text);
 }
 
 // ---------------- input ----------------
@@ -412,7 +475,23 @@ function doDown() {
   if (P.ground && P.ground.thin) {
     P.drop = 0.3; P.dropY = P.ground.y; P.ground = null; P.y += 3; P.vy = 200; P.coyote = 0; sfx.drop();
   } else if (P.ground) {
-    if (P.dash <= 0) { P.dash = 0.75; sfx.dash(); P.sq = 0.25; for (let i = 0; i < 10; i++) dust(P.x - R * 0.5, P.y, rnd(-250, -60), rnd(-90, -10)); }
+    if (bot === 'chopper') {
+      if ((P.zapCD || 0) <= 0) {
+        P.zap = 0.34; P.zapCD = 0.7; P.dash = 0.2; P.sq = 0.2; P.dome = 0.22;
+        sfx.zap(); shake = 4;
+        const gy = P.ground.y; let n = 0;
+        for (const o of obs) {
+          if (o.dead || o.type === 'spring') continue;
+          const ox = o.x + o.w / 2;
+          if (ox > P.x - 16 && ox < P.x + 210 && Math.abs(o.y - gy) < 48) { smash(o); n++; }
+        }
+        for (let i = 0; i < 7; i++) sparks(P.x + rnd(36, 180), P.y - rnd(18, 72), i % 2 ? '#fff6c2' : '#8ae7ff', 2);
+        if (n) toast('BZAP!', '#ffe066');
+      }
+    } else if (P.dash <= 0) {
+      P.dash = 0.75; sfx.dash(); P.sq = 0.25;
+      for (let i = 0; i < 10; i++) dust(P.x - R * 0.5, P.y, rnd(-250, -60), rnd(-90, -10));
+    }
   } else if (!P.pound) {
     P.pound = true; P.vy = Math.max(P.vy, 1300); P.sq = -0.3; sfx.pound();
   }
@@ -525,18 +604,59 @@ function setSide(sd, noisy) {
   $('sBad').classList.toggle('sel', sd === 'bad');
   const m = document.querySelector('meta[name=theme-color]'); if (m) m.setAttribute('content', sd === 'bad' ? '#05030a' : '#081236');
   buildSwatches();
+  syncBotUi();
   if (!$('menu').classList.contains('hide') && menuMode === 'title') {
-    $('mTitle').textContent = sd === 'bad' ? 'BAD ROLLO!' : 'ROLLO ROLLS!';
-    if (!best) $('mStats').innerHTML = sd === 'bad' ? 'Muahaha! I\u2019m Bad Rollo!' : 'Hi! I\u2019m Rollo!';
+    $('mTitle').textContent = titleFor();
+    $('mStats').innerHTML = greetLine();
   }
   if (noisy) {
-    if (sd === 'bad') { tone('sawtooth', 300, 90, 0.35, 0.14); tone('square', 150, 60, 0.35, 0.07); }
-    else { [523, 784, 1047].forEach((f, i) => tone('triangle', f, f, 0.1, 0.15, i * 0.07)); }
-    bubble.text = sd === 'bad' ? 'Muahaha-bzzt!' : 'Beep boop!'; previewBubble = 1.4;
+    previewBubble = 1.4;
+    if (bot === 'chopper') {
+      bubble.text = sd === 'bad' ? 'Grr-bzzt!' : 'Hmph.'; bubble.emo = 'angry'; sfx.chopTalk(3);
+    } else if (sd === 'bad') {
+      tone('sawtooth', 300, 90, 0.35, 0.14); tone('square', 150, 60, 0.35, 0.07);
+      bubble.text = 'Muahaha-bzzt!'; bubble.emo = 'angry';
+    } else {
+      [523, 784, 1047].forEach((f, i) => tone('triangle', f, f, 0.1, 0.15, i * 0.07));
+      bubble.text = 'Beep boop!'; bubble.emo = 'smile';
+    }
+  }
+}
+function syncBotUi() {
+  const chop = bot === 'chopper';
+  document.body.classList.toggle('chop', chop);
+  $('botRollo').classList.toggle('sel', !chop);
+  $('botChop').classList.toggle('sel', chop);
+  $('bBeep').textContent = chop ? 'Blart!' : 'Beep!';
+  $('mBeep').textContent = chop ? 'Blart!' : 'Beep!';
+  $('bBeep').setAttribute('aria-label', chop ? 'Blart' : 'Beep');
+  $('mBeep').setAttribute('aria-label', chop ? 'Blart' : 'Beep');
+  $('bDown').innerHTML = chop ? '&#9889;<small>ZAP</small>' : '&#9660;<small>DOWN</small>';
+  $('bDown').setAttribute('aria-label', chop ? 'Zap' : 'Down');
+  $('mColorLbl').textContent = chop ? 'Orange, white, and gray. Hmph.' : "Pick Rollo's colors!";
+  $('swatches').style.display = chop ? 'none' : '';
+  $('mTip').innerHTML = chop
+    ? 'Tap or swipe &#8593; to jump (tap again in the air for a double jump!)<br>Swipe &#8595; to ZAP crates, drop down, or stomp &middot; Drag &#8592; &#8594; for slow / fast'
+    : 'Tap or swipe &#8593; to jump (tap again in the air for a double jump!)<br>Swipe &#8595; to drop down or zoom &middot; Drag &#8592; &#8594; for slow / fast';
+}
+function setBot(b, noisy) {
+  bot = b === 'chopper' ? 'chopper' : 'rollo';
+  store.set('bot', bot);
+  syncBotUi();
+  if (!$('menu').classList.contains('hide') && menuMode === 'title') {
+    $('mTitle').textContent = titleFor();
+    $('mStats').innerHTML = greetLine();
+  }
+  if (noisy) {
+    previewBubble = 1.5;
+    if (bot === 'chopper') { bubble.text = side === 'bad' ? 'Grr-bzzt!' : 'Hmph.'; bubble.emo = 'angry'; sfx.chopTalk(3); }
+    else { bubble.text = side === 'bad' ? 'Muahaha-bzzt!' : 'Beep boop!'; bubble.emo = side === 'bad' ? 'angry' : 'smile'; sfx.phrase(side === 'bad', bubble.text); }
   }
 }
 $('sGood').addEventListener('click', () => setSide('good', true));
 $('sBad').addEventListener('click', () => setSide('bad', true));
+$('botRollo').addEventListener('click', () => setBot('rollo', true));
+$('botChop').addEventListener('click', () => setBot('chopper', true));
 
 // ---------------- particles ----------------
 function dust(x, y, vx, vy) { parts.push({ x, y, vx, vy, life: 0.5, max: 0.5, size: rnd(7, 14), color: 'rgba(255,255,255,', kind: 'dust' }); }
@@ -564,11 +684,31 @@ function rescue() {
   if (p.x + p.w - x < 220) x = Math.max(p.x + 40, p.x + p.w - 220);
   P.x = x; P.y = p.y - 300; P.vx = 0; P.vy = 0; P.rescue = 2.5; P.inv = 2.4; P.pound = false; P.dash = 0; P.drop = 0; P.jumps = 0; P.ground = null;
   for (const o of obs) if (!o.dead && o.x > x - 60 && o.x < x + 260 && Math.abs(o.y - p.y) < 5) { o.dead = true; sparks(o.x + o.w / 2, o.y - o.h / 2, '#ffffff', 8); }
-  sfx.rescue(); toast('Zap! Hover hat!', '#8fe3ff');
+  sfx.rescue(); toast(bot === 'chopper' ? 'Rockets! Whoa!' : 'Zap! Hover hat!', '#8fe3ff');
 }
 
+function tickChopper(dt) {
+  if (bot !== 'chopper' || !P) return;
+  P.zap = Math.max(0, (P.zap || 0) - dt);
+  P.zapCD = Math.max(0, (P.zapCD || 0) - dt);
+  const slow = state !== 'play' || (!!P.ground && Math.abs(P.vx) < 170);
+  const wobble = Math.sin(T * (slow ? 0.85 : 1.7));
+  let target = wobble * (slow ? 0.46 : 0.16);
+  if (slow && wobble > 0.94) target += 0.12;
+  if (P.zap > 0) target = 0.12;
+  target = clamp(target, -0.48, 0.48);
+  P.dome = (P.dome || 0) + (target - (P.dome || 0)) * Math.min(1, dt * (slow ? 4.5 : 8));
+}
+function tickMutter(dt) {
+  if (bot !== 'chopper' || state !== 'title') return;
+  mutterT -= dt;
+  if (mutterT > 0 || previewBubble > 0.2) return;
+  mutterT = rnd(7, 12);
+  sfx.chopTalk(1 + (Math.random() * 2 | 0));
+}
 function update(dt) {
   playT += dt;
+  tickChopper(dt);
   // generation / cleanup
   while (genX < P.x + VW * 2.2) gen();
   const cut = P.x - VW * 1.2;
@@ -600,11 +740,14 @@ function update(dt) {
   // jump
   if (P.buffer > 0 && P.rescue <= 0) {
     if (P.ground || P.coyote > 0) {
-      P.vy = -JV; P.jumps = 1; P.ground = null; P.coyote = 0; P.buffer = 0; P.sq = -0.28; P.pound = false; sfx.jump();
+      P.vy = -JV; P.jumps = 1; P.ground = null; P.coyote = 0; P.buffer = 0; P.sq = -0.28; P.pound = false;
+      if (bot === 'chopper') { sfx.chopJump(false); sparks(P.x, P.y - 6, '#ff9a1f', 5); }
+      else sfx.jump();
       for (let i = 0; i < 5; i++) dust(P.x, P.y, rnd(-120, 40), rnd(-60, -10));
     } else if (P.jumps < 2) {
-      P.vy = -JV2; P.jumps = P.jumps === 0 ? 1 : 2; P.buffer = 0; P.sq = -0.3; P.pound = false; sfx.jump2();
-      sparks(P.x, P.y, 'rgba(255,255,255,0.9)', 8);
+      P.vy = -JV2; P.jumps = P.jumps === 0 ? 1 : 2; P.buffer = 0; P.sq = -0.3; P.pound = false;
+      if (bot === 'chopper') { sfx.chopJump(true); sparks(P.x, P.y, '#ffd23f', 8); }
+      else { sfx.jump2(); sparks(P.x, P.y, 'rgba(255,255,255,0.9)', 8); }
     }
   }
 
@@ -911,6 +1054,237 @@ function drawRobot(c, x, y, r, o) {
   c.restore();
 }
 
+// Chopper: squat patched astromech. One big eye, mismatched leg and arm, waddle, swivel dome.
+function drawChopper(c, x, y, r, o) {
+  const OR = '#e36b1e', ORD = '#a84810', WH = '#f3ecdf', WHD = '#d5cec0';
+  const GY = '#8d929a', GYD = '#5c636c', MET = '#3a3f47', INK = '#2b2346';
+  const eyeCol = side === 'bad' ? '#ff3b3b' : '#ffd15a';
+  c.save();
+  c.translate(x, y);
+  c.scale(o.sx || 1, o.sy || 1);
+  if (o.alpha != null) c.globalAlpha = o.alpha;
+  const lw = Math.max(1.6, r * 0.075);
+  const phase = o.phase != null ? o.phase : (o.angle || 0);
+  const step = Math.sin(phase * 2.2);
+  const bob = Math.abs(step) * r * (o.air ? 0.03 : 0.07);
+  c.translate(step * r * 0.05, -bob);
+  c.rotate(step * (o.air ? 0.04 : 0.12));
+  const bodyTop = -r * 1.68, bodyBot = -r * 0.52, domeR = r * 0.74;
+  // rocket flames when he's off the deck or hovering back up
+  if (o.air || o.prop) {
+    const flick = 0.62 + 0.38 * Math.abs(Math.sin((o.t || 0) * 36));
+    for (const sx of [-r * 0.5, r * 0.5]) {
+      c.beginPath();
+      c.moveTo(sx - r * 0.09, bodyBot + r * 0.02);
+      c.lineTo(sx, bodyBot + r * 0.78 * flick);
+      c.lineTo(sx + r * 0.09, bodyBot + r * 0.02);
+      c.closePath();
+      c.fillStyle = '#ff9a1f'; c.fill();
+      c.beginPath();
+      c.moveTo(sx - r * 0.04, bodyBot + r * 0.02);
+      c.lineTo(sx, bodyBot + r * 0.24 * flick);
+      c.lineTo(sx + r * 0.04, bodyBot + r * 0.02);
+      c.closePath();
+      c.fillStyle = '#fff4c4'; c.fill();
+    }
+  }
+  // mismatched legs: orange original on the left, boxy gray replacement on the right
+  const drawLeg = (lx, lift, kind) => {
+    const footH = r * 0.18;
+    const footW = kind === 'gray' ? r * 0.52 : r * 0.4;
+    const footTop = -lift - footH;
+    c.save();
+    c.lineJoin = 'round';
+    c.strokeStyle = INK; c.lineWidth = lw;
+    const legTop = bodyBot + r * 0.02;
+    const legH = Math.max(r * 0.08, footTop - legTop);
+    if (kind === 'orange') {
+      c.fillStyle = OR;
+      rr(c, lx - r * 0.09, legTop, r * 0.18, legH, r * 0.08);
+      c.fill(); c.stroke();
+      c.fillStyle = WH;
+      c.fillRect(lx - r * 0.1, legTop + legH * 0.42, r * 0.2, r * 0.08);
+      c.strokeStyle = INK; c.lineWidth = lw * 0.45;
+      c.strokeRect(lx - r * 0.1, legTop + legH * 0.42, r * 0.2, r * 0.08);
+    } else {
+      c.fillStyle = GY;
+      rr(c, lx - r * 0.12, legTop, r * 0.24, legH, r * 0.04);
+      c.fill(); c.stroke();
+      c.fillStyle = MET;
+      c.beginPath(); c.arc(lx, legTop + legH * 0.55, r * 0.045, 0, Math.PI * 2); c.fill();
+      c.strokeStyle = INK; c.lineWidth = lw * 0.55; c.stroke();
+    }
+    c.fillStyle = kind === 'gray' ? GYD : OR;
+    c.strokeStyle = INK; c.lineWidth = lw;
+    rr(c, lx - footW / 2, -lift - footH, footW, footH, kind === 'gray' ? r * 0.03 : r * 0.08);
+    c.fill(); c.stroke();
+    if (kind === 'gray') { c.fillStyle = MET; c.fillRect(lx - r * 0.08, -lift - footH + r * 0.05, r * 0.16, r * 0.055); }
+    c.restore();
+  };
+  drawLeg(-r * 0.36, Math.max(0, step) * r * 0.14, 'orange');
+  drawLeg(r * 0.38, Math.max(0, -step) * r * 0.14, 'gray');
+  // little center wheel — this is the roll
+  c.save();
+  c.translate(0, -r * 0.16);
+  c.rotate(phase);
+  c.beginPath(); c.arc(0, 0, r * 0.15, 0, Math.PI * 2);
+  c.fillStyle = MET; c.fill(); c.lineWidth = lw * 0.7; c.strokeStyle = INK; c.stroke();
+  c.beginPath(); c.moveTo(-r * 0.15, 0); c.lineTo(r * 0.15, 0); c.moveTo(0, -r * 0.15); c.lineTo(0, r * 0.15); c.stroke();
+  c.restore();
+  // thruster nozzles
+  c.fillStyle = MET; c.strokeStyle = INK; c.lineWidth = lw * 0.7;
+  for (const dir of [-1, 1]) {
+    const x0 = dir * r * 0.58;
+    c.beginPath();
+    c.moveTo(x0 - r * 0.1, bodyBot - r * 0.04);
+    c.lineTo(x0 + r * 0.1, bodyBot - r * 0.04);
+    c.lineTo(x0 + r * 0.14, bodyBot + r * 0.12);
+    c.lineTo(x0 - r * 0.14, bodyBot + r * 0.12);
+    c.closePath(); c.fill(); c.stroke();
+    c.fillStyle = '#1b2026';
+    c.fillRect(x0 - r * 0.05, bodyBot + r * 0.01, r * 0.1, r * 0.06);
+    c.fillStyle = MET;
+  }
+  // barrel body, patchwork orange / dirty white / dull gray
+  const bx = -r * 0.73, bw = r * 1.46, bh = bodyBot - bodyTop;
+  c.fillStyle = OR;
+  rr(c, bx, bodyTop, bw, bh, r * 0.22); c.fill();
+  c.save(); c.clip();
+  c.fillStyle = WH;
+  c.fillRect(bx + r * 0.16, bodyTop + r * 0.26, r * 0.28, r * 0.32);
+  c.strokeStyle = INK; c.lineWidth = lw * 0.55;
+  c.strokeRect(bx + r * 0.16, bodyTop + r * 0.26, r * 0.28, r * 0.32);
+  c.fillStyle = MET;
+  for (let i = 0; i < 3; i++) c.fillRect(bx + r * 0.52, bodyTop + r * 0.32 + i * r * 0.14, r * 0.34, r * 0.045);
+  c.fillStyle = GY;
+  c.fillRect(bx + bw - r * 0.52, bodyTop + bh - r * 0.46, r * 0.38, r * 0.32);
+  c.strokeStyle = INK; c.strokeRect(bx + bw - r * 0.52, bodyTop + bh - r * 0.46, r * 0.38, r * 0.32);
+  c.fillStyle = GYD;
+  c.fillRect(bx + bw - r * 0.44, bodyTop + bh - r * 0.34, r * 0.22, r * 0.07);
+  c.fillStyle = 'rgba(255,255,255,0.28)';
+  c.fillRect(bx + r * 0.1, bodyTop + r * 0.1, r * 0.11, bh * 0.62);
+  c.strokeStyle = ORD; c.lineWidth = Math.max(1, r * 0.045); c.lineCap = 'round';
+  c.beginPath(); c.moveTo(bx + r * 0.8, bodyTop + r * 0.22); c.lineTo(bx + r * 1.08, bodyTop + r * 0.46); c.stroke();
+  c.restore();
+  c.lineWidth = lw; c.strokeStyle = INK;
+  rr(c, bx, bodyTop, bw, bh, r * 0.22); c.stroke();
+  // dome swivels on its own, grumpy single photoreceptor
+  c.save();
+  c.translate(0, bodyTop);
+  c.rotate(clamp(o.dome || 0, -0.5, 0.5));
+  c.beginPath(); c.arc(0, 0, domeR, Math.PI, 0, true); c.closePath();
+  c.fillStyle = OR; c.fill();
+  c.save(); c.clip();
+  c.fillStyle = WH;
+  c.beginPath(); c.ellipse(-domeR * 0.34, -domeR * 0.42, domeR * 0.26, domeR * 0.18, -0.5, 0, Math.PI * 2); c.fill();
+  c.fillStyle = GY;
+  c.beginPath(); c.ellipse(domeR * 0.38, -domeR * 0.28, domeR * 0.15, domeR * 0.11, 0.4, 0, Math.PI * 2); c.fill();
+  c.fillStyle = 'rgba(255,255,255,0.4)';
+  c.beginPath(); c.ellipse(-domeR * 0.22, -domeR * 0.68, domeR * 0.2, domeR * 0.1, -0.6, 0, Math.PI * 2); c.fill();
+  c.restore();
+  c.lineWidth = lw; c.strokeStyle = INK;
+  c.beginPath(); c.arc(0, 0, domeR, Math.PI, 0, true); c.stroke();
+  c.fillStyle = GYD;
+  c.fillRect(-domeR * 0.92, -r * 0.02, domeR * 1.84, r * 0.09);
+  c.strokeStyle = INK; c.lineWidth = lw * 0.7;
+  c.strokeRect(-domeR * 0.92, -r * 0.02, domeR * 1.84, r * 0.09);
+  c.fillStyle = GY; c.strokeStyle = INK; c.lineWidth = lw * 0.75;
+  rr(c, -r * 0.045, -domeR - r * 0.14, r * 0.09, r * 0.16, r * 0.04); c.fill(); c.stroke();
+  const ex = r * 0.02, ey = -domeR * 0.42, er = r * 0.32;
+  c.beginPath(); c.arc(ex, ey, er, 0, Math.PI * 2);
+  c.fillStyle = MET; c.fill(); c.lineWidth = lw * 0.8; c.strokeStyle = INK; c.stroke();
+  if (o.dizzy) {
+    c.strokeStyle = '#fff'; c.lineWidth = r * 0.045; c.beginPath();
+    for (let i = 0; i < 22; i++) { const a = i * 0.55 + (o.t || 0) * 10, rad = er * 0.75 * i / 22; c.lineTo(ex + Math.cos(a) * rad, ey + Math.sin(a) * rad); }
+    c.stroke();
+  } else {
+    const shut = o.blink ? 0.16 : 1;
+    c.save(); c.translate(ex, ey); c.scale(1, shut);
+    c.beginPath(); c.arc(0, 0, er * 0.72, 0, Math.PI * 2); c.fillStyle = eyeCol; c.fill();
+    c.beginPath(); c.arc(er * 0.06, er * 0.05, er * 0.28, 0, Math.PI * 2); c.fillStyle = '#1a1208'; c.fill();
+    c.beginPath(); c.arc(-er * 0.2, -er * 0.2, er * 0.13, 0, Math.PI * 2); c.fillStyle = '#fff'; c.fill();
+    c.restore();
+    const droop = o.happy ? 0.12 : (o.blink ? 0.95 : 0.58 + Math.sin((o.t || 0) * 1.6) * 0.06);
+    c.save();
+    c.beginPath(); c.arc(0, 0, domeR * 0.98, Math.PI, 0, true); c.closePath(); c.clip();
+    c.fillStyle = OR;
+    c.beginPath();
+    c.moveTo(ex - er * 1.3, ey - er * (1.2 - droop));
+    c.lineTo(ex + er * 1.35, ey - er * (1.2 - droop * 0.28));
+    c.lineTo(ex + er * 1.35, ey - er * 1.55);
+    c.lineTo(ex - er * 1.3, ey - er * 1.55);
+    c.closePath(); c.fill();
+    c.restore();
+    c.strokeStyle = INK; c.lineWidth = r * 0.06; c.lineCap = 'round';
+    c.beginPath();
+    c.moveTo(ex - er * 1.2, ey - er * (1.18 - droop));
+    c.lineTo(ex + er * 1.25, ey - er * (1.18 - droop * 0.28));
+    c.stroke();
+  }
+  c.restore();
+  // little arms: orange claw, and a gray electro-prod that shoots forward
+  const wave = o.air ? Math.sin((o.t || 0) * ((o.jumps || 0) >= 2 ? 26 : 17)) : Math.sin((o.t || 0) * 3.1);
+  const drawArm = (dir, lift) => {
+    const sx = dir * r * 0.74, sy = -r * 1.18;
+    const up = -1.2, down = 0.95;
+    const a = down + (up - down) * lift;
+    let ang = dir < 0 ? Math.PI - a : a;
+    if (dir > 0 && (o.zap || 0) > 0) ang = -0.08;
+    const len = r * (dir > 0 && (o.zap || 0) > 0 ? 0.62 : 0.44);
+    const hx = sx + Math.cos(ang) * len, hy = sy + Math.sin(ang) * len;
+    c.lineCap = 'round'; c.lineJoin = 'round';
+    c.strokeStyle = INK; c.lineWidth = r * 0.16;
+    c.beginPath(); c.moveTo(sx, sy); c.lineTo(hx, hy); c.stroke();
+    c.strokeStyle = dir > 0 ? GY : OR; c.lineWidth = r * 0.1;
+    c.beginPath(); c.moveTo(sx, sy); c.lineTo(hx, hy); c.stroke();
+    if (dir < 0) {
+      c.strokeStyle = INK; c.lineWidth = r * 0.055;
+      c.beginPath();
+      c.moveTo(hx, hy); c.lineTo(hx + Math.cos(ang - 0.8) * r * 0.16, hy + Math.sin(ang - 0.8) * r * 0.16);
+      c.moveTo(hx, hy); c.lineTo(hx + Math.cos(ang + 0.55) * r * 0.16, hy + Math.sin(ang + 0.55) * r * 0.16);
+      c.stroke();
+      c.strokeStyle = OR; c.lineWidth = r * 0.03; c.stroke();
+    } else {
+      const px = Math.cos(ang), py = Math.sin(ang), nx = -py, ny = px;
+      c.strokeStyle = INK; c.lineWidth = r * 0.05;
+      c.beginPath();
+      c.moveTo(hx + nx * r * 0.07, hy + ny * r * 0.07);
+      c.lineTo(hx + nx * r * 0.07 + px * r * 0.16, hy + ny * r * 0.07 + py * r * 0.16);
+      c.moveTo(hx - nx * r * 0.07, hy - ny * r * 0.07);
+      c.lineTo(hx - nx * r * 0.07 + px * r * 0.16, hy - ny * r * 0.07 + py * r * 0.16);
+      c.stroke();
+      const tipx = hx + px * r * 0.18, tipy = hy + py * r * 0.18;
+      if ((o.zap || 0) > 0 || Math.sin((o.t || 0) * 9) > 0.84) {
+        c.fillStyle = '#fff6c0'; c.beginPath(); c.arc(tipx, tipy, r * 0.05, 0, Math.PI * 2); c.fill();
+      }
+      if ((o.zap || 0) > 0 && (o.alpha == null || o.alpha > 0.85)) {
+        const x2 = r * 5.15, y2 = -r * 0.7;
+        const fork = (ox, oy) => {
+          c.beginPath(); c.moveTo(tipx, tipy);
+          const n = 6;
+          for (let i = 1; i <= n; i++) {
+            const t = i / n;
+            const jx = i === n ? 0 : rnd(-r * 0.18, r * 0.18);
+            const jy = i === n ? 0 : rnd(-r * 0.22, r * 0.22);
+            c.lineTo(tipx + (ox - tipx) * t + jx, tipy + (oy - tipy) * t + jy);
+          }
+          c.lineCap = 'round'; c.lineJoin = 'round';
+          c.strokeStyle = 'rgba(130,220,255,0.95)'; c.lineWidth = r * 0.22; c.stroke();
+          c.strokeStyle = '#fff8d0'; c.lineWidth = r * 0.08; c.stroke();
+        };
+        fork(x2, y2);
+        fork(x2 * 0.72, y2 - r * 0.35);
+        c.fillStyle = '#fff'; c.beginPath(); c.arc(x2, y2, r * 0.08, 0, Math.PI * 2); c.fill();
+      }
+    }
+  };
+  const liftL = o.air ? 0.8 + 0.2 * wave : 0.18 + 0.22 * wave;
+  const liftR = o.air ? 0.8 + 0.2 * Math.sin((o.t || 0) * 17 + 1.4) : 0.12 + 0.2 * Math.sin((o.t || 0) * 3.1 + 2);
+  drawArm(-1, clamp(liftL, 0, 1));
+  drawArm(1, clamp(liftR, 0, 1));
+  c.restore();
+}
+
 function drawBubble(c, x, y, text, emo, s, alpha) {
   c.save(); c.globalAlpha = alpha;
   c.font = `900 ${Math.round(26 * s)}px ui-rounded, "Arial Rounded MT Bold", "Trebuchet MS", sans-serif`;
@@ -1164,7 +1538,11 @@ function drawParts() {
 }
 function robotOpts(t) {
   const sq = P.sq;
-  return { col: cols(t), angle: P.angle, sx: 1 + sq * 0.8, sy: 1 - sq, lean: P.lean, look: clamp(P.vy / -800, -1, 1), blink: P.blink < 0, happy: P.happy > 0 || state === 'over', dizzy: P.dizzy > 0, ant: P.ant, prop: P.rescue > 0, t };
+  return { col: cols(t), angle: P.angle, sx: 1 + sq * 0.8, sy: 1 - sq, lean: P.lean, look: clamp(P.vy / -800, -1, 1), blink: P.blink < 0, happy: P.happy > 0 || state === 'over', dizzy: P.dizzy > 0, ant: P.ant, prop: P.rescue > 0, t,
+    dome: P.dome || 0, air: !P.ground && !(P.rescue > 0), zap: P.zap || 0, jumps: P.jumps || 0, phase: state === 'play' ? P.angle : T * 2.6 };
+}
+function drawBot(c, x, y, r, o) {
+  if (bot === 'chopper') drawChopper(c, x, y, r, o); else drawRobot(c, x, y, r, o);
 }
 function draw() {
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
@@ -1183,8 +1561,8 @@ function draw() {
     if (sp) { const kk = clamp(1 - (sp.y - P.y) / 420, 0.25, 1); ctx.fillStyle = `rgba(30,20,60,${0.28 * kk})`; ctx.beginPath(); ctx.ellipse(P.x, sp.y + 2, R * 1.05 * kk, R * 0.3 * kk, 0, 0, 7); ctx.fill(); }
     const o = robotOpts(T);
     if (P.inv > 0 && Math.floor(T * 12) % 2 === 0) o.alpha = 0.45;
-    if (P.dash > 0) { ctx.globalAlpha = 0.25; drawRobot(ctx, P.x - 40, P.y, R, Object.assign({}, o, { alpha: 0.25 })); drawRobot(ctx, P.x - 20, P.y, R, Object.assign({}, o, { alpha: 0.35 })); ctx.globalAlpha = 1; }
-    drawRobot(ctx, P.x, P.y, R, o);
+    if (P.dash > 0) { ctx.globalAlpha = 0.25; drawBot(ctx, P.x - 40, P.y, R, Object.assign({}, o, { alpha: 0.25 })); drawBot(ctx, P.x - 20, P.y, R, Object.assign({}, o, { alpha: 0.35 })); ctx.globalAlpha = 1; }
+    drawBot(ctx, P.x, P.y, R, o);
     if (bubble.t > 0) drawBubble(ctx, P.x + 10, P.y - R * 2.9, bubble.text, bubble.emo, 1, Math.min(1, bubble.t * 4));
   }
   drawParts();
@@ -1207,10 +1585,14 @@ function drawPreview() {
   const g = c.createRadialGradient(w / 2, h * 0.55, 4, w / 2, h * 0.55, w * 0.55);
   if (side === 'bad') { g.addColorStop(0, 'rgba(255,70,50,0.55)'); g.addColorStop(1, 'rgba(255,70,50,0)'); } else { g.addColorStop(0, 'rgba(160,230,255,0.9)'); g.addColorStop(1, 'rgba(160,230,255,0)'); }
   c.fillStyle = g; c.fillRect(0, 0, w, h);
-  const r = w * 0.2, bounce = Math.abs(Math.sin(T * 3)) * r * 0.25, sq = Math.max(0, 0.12 - Math.abs(Math.sin(T * 3)) * 0.5);
-  c.fillStyle = 'rgba(30,20,60,0.2)'; c.beginPath(); c.ellipse(w / 2, h * 0.9, r * (1 - bounce / r * 0.5), r * 0.25, 0, 0, 7); c.fill();
+  const r = w * 0.2;
+  const hop = bot === 'chopper' ? Math.max(0, Math.sin(T * 2.15) - 0.72) : Math.abs(Math.sin(T * 3));
+  const bounce = hop * r * (bot === 'chopper' ? 0.9 : 0.25);
+  const sq = bot === 'chopper' ? 0 : Math.max(0, 0.12 - Math.abs(Math.sin(T * 3)) * 0.5);
+  c.fillStyle = 'rgba(30,20,60,0.2)'; c.beginPath(); c.ellipse(w / 2, h * 0.9, r * (1 - Math.min(0.45, bounce / r * 0.5)), r * 0.25, 0, 0, 7); c.fill();
   const hp = previewBubble > 0;
-  drawRobot(c, w / 2, h * 0.9 - bounce, r, { col: cols(T), angle: T * 2, sx: 1 + sq, sy: 1 - sq, lean: Math.sin(T * 2) * 0.12, look: 0, blink: P ? P.blink < 0 : false, happy: hp || state === 'over', dizzy: false, ant: Math.sin(T * 5) * 0.3, prop: false, t: T });
+  const showZap = bot === 'chopper' && (T % 4.8) > 4.5;
+  drawBot(c, w / 2, h * 0.9 - bounce, r, { col: cols(T), angle: T * 2, phase: T * 2.6, sx: 1 + sq, sy: 1 - sq, lean: Math.sin(T * 2) * 0.12, look: 0, blink: P ? P.blink < 0 : false, happy: hp || state === 'over', dizzy: false, ant: Math.sin(T * 5) * 0.3, prop: false, t: T, dome: Math.sin(T * 0.9) * 0.46, air: bot === 'chopper' && !showZap && bounce > 1, zap: showZap ? 0.3 : 0, jumps: bounce > 1 ? 2 : 0 });
   if (previewBubble > 0) {
     // compact bubble inside preview
     c.save(); c.globalAlpha = Math.min(1, previewBubble * 4);
@@ -1242,7 +1624,7 @@ function loop(ts) {
   dt = Math.min(dt, 1 / 30);
   T += dt;
   if (state === 'play') { update(dt); updHud(); }
-  else if (state === 'title' && P) { cam.x = P.x - VW * 0.28 + Math.sin(T * 0.4) * 30; P.angle += dt * 1.5; }
+  else if (state === 'title' && P) { cam.x = P.x - VW * 0.28 + Math.sin(T * 0.4) * 30; P.angle += dt * 1.5; tickChopper(dt); tickMutter(dt); }
   updPit(dt);
   updateFx(dt);
   draw();
@@ -1251,11 +1633,12 @@ function loop(ts) {
 }
 
 // expose a tiny hook for automated testing
-window.__rollo = { get state() { return state; }, get player() { return P; }, get hearts() { return hearts; }, get bolts() { return bolts; }, start: startGame, jump: doJump, down: doDown, say };
+window.__rollo = { get state() { return state; }, get player() { return P; }, get hearts() { return hearts; }, get bolts() { return bolts; }, get bot() { return bot; }, get side() { return side; }, start: startGame, jump: doJump, down: doDown, say, setBot(b) { setBot(b, false); }, setSide(s) { setSide(s, false); } };
 
 resize();
 setMute(muted);
 setSide(side, false);
+setBot(bot, false);
 newGame();
 showMenu('title');
 requestAnimationFrame(loop);
