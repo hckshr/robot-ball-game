@@ -2394,8 +2394,9 @@ function drawBall(c, x, y, r, o, d) {
   const shell = bb8 ? (K.body || '#f7f8fa') : (K.body || '#14161c');
   const lw = Math.max(1.8, r * 0.055);
   const Rb = r * 1.02;
-  const headFrac = 0.58;
+  const headFrac = 0.60;
   const headR = Rb * headFrac;
+  const headH = headR * 1.16;
 
   c.save();
   c.translate(x, y);
@@ -2419,112 +2420,65 @@ function drawBall(c, x, y, r, o, d) {
   c.fillRect(-Rb * 1.2, -Rb * 2.2, Rb * 2.4, Rb * 2.4);
   c.translate(0, -Rb);
   c.rotate(o.angle || 0);
-  const spots = [
-    [-0.36, 0.06, 0.46, 0],
-    [0.38, 0.22, 0.40, 1],
-    [0.04, -0.46, 0.28, 2],
-    [0.02, 0.58, 0.20, 1],
-    [0.60, -0.16, 0.16, 2],
-    [-0.58, -0.18, 0.16, 2]
-  ];
-  const links = [[0, 1], [0, 2], [1, 2], [0, 3], [1, 3], [2, 4], [0, 5]];
-  c.lineCap = 'round';
-  links.forEach(([a, b]) => {
-    const ax = spots[a][0] * Rb, ay = spots[a][1] * Rb, ar = spots[a][2] * Rb;
-    const bx = spots[b][0] * Rb, by = spots[b][1] * Rb, br = spots[b][2] * Rb;
-    const dx = bx - ax, dy = by - ay;
-    const len = Math.hypot(dx, dy) || 1;
-    if (len < ar + br + Rb * 0.02) return;
-    const ux = dx / len, uy = dy / len;
-    const x1 = ax + ux * ar, y1 = ay + uy * ar;
-    const x2 = bx - ux * br, y2 = by - uy * br;
-    c.beginPath();
-    c.moveTo(x1, y1);
-    c.quadraticCurveTo((x1 + x2) / 2 + uy * Rb * 0.05, (y1 + y2) / 2 - ux * Rb * 0.05, x2, y2);
-    c.strokeStyle = disc;
-    c.lineWidth = Rb * (bb8 ? 0.07 : 0.042);
-    c.stroke();
-  });
+  const spots = [[-0.46, 0.10, 0.46], [0.50, 0.18, 0.44], [0.04, -0.38, 0.42]];
   spots.forEach((s) => {
-    const px = s[0] * Rb, py = s[1] * Rb, rad = s[2] * Rb, kind = s[3];
+    const nx = s[0], ny = s[1];
+    const nz = Math.sqrt(Math.max(0.2, 1 - nx * nx - ny * ny));
+    const rad = s[2] * Rb;
+    c.save();
+    c.translate(nx * Rb, ny * Rb);
+    c.rotate(Math.atan2(ny, nx));
+    c.scale(nz, 1);
     c.beginPath();
-    c.arc(px, py, rad, 0, Math.PI * 2);
-    c.fillStyle = disc;
+    c.arc(0, 0, rad, 0, Math.PI * 2);
+    c.fillStyle = bb8 ? disc : metal;
     c.fill();
-    c.lineWidth = Math.max(1, lw * 0.4);
+    c.lineWidth = Math.max(1.2, lw * 0.4);
     c.strokeStyle = ink;
     c.stroke();
-    const hole = rad * (bb8 ? 0.70 : 0.68);
+    const inner = rad * 0.58;
     c.beginPath();
-    c.arc(px, py, hole, 0, Math.PI * 2);
-    c.fillStyle = bb8 ? shell : '#12141a';
+    c.arc(0, 0, inner, 0, Math.PI * 2);
+    c.fillStyle = bb8 ? '#c5ced6' : '#12151c';
     c.fill();
-    c.beginPath();
-    c.arc(px, py, hole, 0, Math.PI * 2);
-    c.strokeStyle = bb8 ? metal : disc;
-    c.lineWidth = rad * (bb8 ? 0.12 : 0.14);
+    c.lineWidth = rad * 0.08;
+    c.strokeStyle = bb8 ? '#8e98a3' : disc;
     c.stroke();
     c.save();
     c.beginPath();
-    c.arc(px, py, hole * 0.92, 0, Math.PI * 2);
+    c.arc(0, 0, inner * 0.86, 0, Math.PI * 2);
     c.clip();
-    if (bb8) {
-      if (kind === 0) {
-        c.beginPath();
-        c.arc(px, py, hole * 0.4, 0, Math.PI * 2);
-        c.fillStyle = '#2a2e33';
-        c.fill();
-        c.strokeStyle = metal;
-        c.lineWidth = Math.max(1.2, rad * 0.07);
-        c.beginPath();
-        c.moveTo(px - hole * 0.4, py);
-        c.lineTo(px + hole * 0.4, py);
-        c.moveTo(px, py - hole * 0.4);
-        c.lineTo(px, py + hole * 0.4);
-        c.stroke();
-      } else if (kind === 1) {
-        c.fillStyle = '#b7c0c8';
-        for (let k = -1; k <= 1; k++) {
-          c.fillRect(px + k * hole * 0.28 - hole * 0.08, py - hole * 0.42, hole * 0.16, hole * 0.84);
-        }
-      } else {
-        c.beginPath();
-        c.arc(px, py, hole * 0.28, 0, Math.PI * 2);
-        c.fillStyle = metal;
-        c.fill();
-        c.strokeStyle = ink;
-        c.lineWidth = Math.max(1, lw * 0.3);
-        c.stroke();
-      }
-    } else {
-      c.strokeStyle = disc;
-      c.lineWidth = Math.max(1, rad * 0.055);
-      for (let k = -3; k <= 3; k++) {
-        c.beginPath();
-        c.moveTo(px - hole, py + k * hole * 0.18);
-        c.lineTo(px + hole, py + k * hole * 0.18);
-        c.stroke();
-      }
-      c.beginPath();
-      c.arc(px, py, hole * 0.22, 0, Math.PI * 2);
-      c.fillStyle = shell;
-      c.fill();
-      c.strokeStyle = disc;
-      c.lineWidth = Math.max(1, rad * 0.06);
-      c.stroke();
-    }
+    c.fillStyle = bb8 ? '#2e343c' : '#9aa3ad';
+    const sw = inner * 0.15, sh = inner * 0.7;
+    for (let k = -1; k <= 1; k++) c.fillRect(k * inner * 0.3 - sw / 2, -sh / 2, sw, sh);
+    c.restore();
     c.restore();
   });
-  if (bb8) {
-    c.strokeStyle = 'rgba(120,90,50,0.35)';
-    c.lineWidth = Math.max(1, Rb * 0.012);
+  c.strokeStyle = disc;
+  c.lineWidth = Rb * 0.03;
+  c.lineCap = 'round';
+  const seam = (i, j) => {
+    const a = spots[i], b = spots[j], k = spots[3 - i - j];
+    const mx = (a[0] + b[0]) / 2, my = (a[1] + b[1]) / 2;
+    const dx = b[0] - a[0], dy = b[1] - a[1];
+    const len = Math.hypot(dx, dy) || 1;
+    let px = -dy / len, py = dx / len;
+    if (px * (k[0] - mx) + py * (k[1] - my) > 0) { px = -px; py = -py; }
+    let t = 0.04, x = mx, y = my;
+    for (let n = 0; n < 14; n++) {
+      x = mx + px * t; y = my + py * t;
+      const clear = spots.every((s) => Math.hypot(x - s[0], y - s[1]) > s[2] + 0.045);
+      if (clear && Math.hypot(x, y) < 0.9) break;
+      t += 0.035;
+    }
+    if (Math.hypot(x, y) > 0.92) return;
+    const tx = dx / len, ty = dy / len;
     c.beginPath();
-    c.moveTo(Rb * 0.55, Rb * 0.42);
-    c.lineTo(Rb * 0.72, Rb * 0.55);
-    c.moveTo(-Rb * 0.72, Rb * 0.28);
-    c.lineTo(-Rb * 0.58, Rb * 0.42);
+    c.moveTo((x - tx * 0.2) * Rb, (y - ty * 0.2) * Rb);
+    c.quadraticCurveTo((x + px * 0.1) * Rb, (y + py * 0.1) * Rb, (x + tx * 0.2) * Rb, (y + ty * 0.2) * Rb);
     c.stroke();
-  }
+  };
+  seam(0, 1); seam(0, 2); seam(1, 2);
   c.restore();
   c.strokeStyle = 'rgba(255,255,255,' + (bb8 ? 0.55 : 0.45) + ')';
   c.lineWidth = Rb * (bb8 ? 0.045 : 0.055);
@@ -2537,24 +2491,22 @@ function drawBall(c, x, y, r, o, d) {
   c.stroke();
 
   const half = headR;
-  const edgeY = -Rb - Math.sqrt(Math.max(0, Rb * Rb - half * half));
-  const baseY = edgeY;
+  const contactY = -Rb - Math.sqrt(Math.max(0, Rb * Rb - half * half));
+  const gap = bb8 ? Rb * 0.055 : Rb * 0.02;
+  const baseY = contactY - gap;
+  c.fillStyle = bb8 ? 'rgba(40,32,24,0.45)' : 'rgba(0,0,0,0.55)';
+  c.beginPath();
+  c.ellipse(0, contactY + Rb * 0.012, headR * 0.78, Rb * 0.045, 0, 0, Math.PI * 2);
+  c.fill();
   const roll = bb8 ? clamp(o.headLean || 0, 0, 0.28) : (0.08 + clamp(o.headLean || 0, 0, 0.14));
   c.save();
   c.translate(0, baseY);
   c.rotate(roll);
 
   if (bb8) {
-    c.fillStyle = '#9aa3ad';
-    c.beginPath();
-    c.ellipse(0, r * 0.012, headR * 0.98, headR * 0.12, 0, 0, Math.PI * 2);
-    c.fill();
-    c.strokeStyle = ink;
-    c.lineWidth = lw * 0.4;
-    c.stroke();
     const dome = () => {
       c.beginPath();
-      c.arc(0, 0, headR, Math.PI, 0, false);
+      c.ellipse(0, 0, headR, headH, 0, Math.PI, 0, false);
       c.closePath();
     };
     dome();
@@ -2563,18 +2515,18 @@ function drawBall(c, x, y, r, o, d) {
     c.save();
     dome();
     c.clip();
-    const g = c.createLinearGradient(-headR, -headR, headR * 0.5, 0);
-    g.addColorStop(0, 'rgba(255,255,255,0.8)');
-    g.addColorStop(0.55, 'rgba(255,255,255,0)');
-    g.addColorStop(1, 'rgba(80,60,30,0.14)');
+    const g = c.createLinearGradient(-headR, -headH, headR * 0.4, 0);
+    g.addColorStop(0, 'rgba(255,255,255,0.85)');
+    g.addColorStop(0.5, 'rgba(255,255,255,0)');
+    g.addColorStop(1, 'rgba(70,55,30,0.12)');
     c.fillStyle = g;
-    c.fillRect(-headR, -headR, headR * 2, headR);
-    c.fillStyle = '#8d98a4';
-    c.fillRect(-headR, -headR * 0.16, headR * 2, headR * 0.16);
-    c.fillStyle = disc;
-    c.fillRect(-headR, -headR * 0.42, headR * 2, headR * 0.26);
+    c.fillRect(-headR, -headH, headR * 2, headH);
+    c.fillStyle = '#4e565f';
+    c.fillRect(-headR, -headH * 0.12, headR * 2, headH * 0.12);
     c.fillStyle = metal;
-    c.fillRect(-headR, -headR * 0.50, headR * 2, headR * 0.08);
+    c.fillRect(-headR, -headH * 0.20, headR * 2, headH * 0.08);
+    c.fillStyle = disc;
+    c.fillRect(-headR, -headH * 0.46, headR * 2, headH * 0.26);
     c.restore();
     dome();
     c.lineWidth = lw;
@@ -2592,53 +2544,46 @@ function drawBall(c, x, y, r, o, d) {
       c.save();
       c.translate(ex, ey);
       c.scale(1, o.blink ? 0.16 : 1);
-      const eg = c.createRadialGradient(-er * 0.25, -er * 0.3, er * 0.05, 0, 0, er);
-      eg.addColorStop(0, 'rgba(180,210,255,0.75)');
-      eg.addColorStop(0.28, '#1a1c20');
+      const eg = c.createRadialGradient(-er * 0.22, -er * 0.28, er * 0.04, 0, 0, er);
+      eg.addColorStop(0, 'rgba(90,170,255,0.95)');
+      eg.addColorStop(0.26, '#16181c');
       eg.addColorStop(1, '#050608');
       c.fillStyle = eg;
       c.beginPath();
       c.arc(0, 0, er * 0.72, 0, Math.PI * 2);
       c.fill();
       c.beginPath();
-      c.arc(-er * 0.28, -er * 0.28, er * 0.18, 0, Math.PI * 2);
-      c.fillStyle = 'rgba(255,255,255,0.92)';
+      c.arc(-er * 0.26, -er * 0.28, er * 0.16, 0, Math.PI * 2);
+      c.fillStyle = 'rgba(170,214,255,0.95)';
       c.fill();
       c.restore();
     };
-    eye(headR * 0.04, -headR * 0.66, headR * 0.27);
-    eye(headR * 0.46, -headR * 0.42, headR * 0.13, '#6d7580');
-    c.strokeStyle = metal;
-    c.lineWidth = Math.max(1.4, r * 0.018);
+    eye(headR * 0.02, -headH * 0.72, headR * 0.26);
+    eye(headR * 0.48, -headH * 0.50, headR * 0.12, '#6d7580');
     c.beginPath();
-    c.moveTo(-headR * 0.22, -headR * 0.90);
-    c.lineTo(-headR * 0.34, -headR * 1.22);
-    c.stroke();
-    c.fillStyle = disc;
-    c.beginPath();
-    c.arc(-headR * 0.34, -headR * 1.22, r * 0.028, 0, Math.PI * 2);
+    c.arc(-headR * 0.58, -headH * 0.32, r * 0.032, 0, Math.PI * 2);
+    c.fillStyle = '#e23b3b';
     c.fill();
     c.strokeStyle = ink;
-    c.lineWidth = lw * 0.35;
+    c.lineWidth = lw * 0.3;
+    c.stroke();
+    c.strokeStyle = metal;
+    c.lineWidth = Math.max(1.4, r * 0.016);
+    c.beginPath();
+    c.moveTo(-headR * 0.16, -headH * 0.94);
+    c.lineTo(-headR * 0.28, -headH * 1.12);
     c.stroke();
   } else {
-    const topHalf = headR * 0.78;
-    const hh = headR * 1.02;
+    const topHalf = headR * 0.68;
+    const hh = headR * 1.12;
     const cap = () => {
       c.beginPath();
-      c.moveTo(-headR, r * 0.01);
-      c.lineTo(-topHalf, -hh * 0.78);
-      c.quadraticCurveTo(0, -hh, topHalf, -hh * 0.78);
-      c.lineTo(headR, r * 0.01);
+      c.moveTo(-headR, 0);
+      c.lineTo(-topHalf, -hh);
+      c.lineTo(topHalf, -hh);
+      c.lineTo(headR, 0);
       c.closePath();
     };
-    c.fillStyle = metal;
-    c.beginPath();
-    c.ellipse(0, r * 0.02, headR * 1.04, headR * 0.11, 0, 0, Math.PI * 2);
-    c.fill();
-    c.strokeStyle = ink;
-    c.lineWidth = lw * 0.4;
-    c.stroke();
     cap();
     c.fillStyle = shell;
     c.fill();
